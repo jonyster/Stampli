@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+.env.local
+apps/api/data/decisions.json
+*.log
+pnpm.cjs
+pnpm.exe

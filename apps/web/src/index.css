@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  background: #f3f4f6;
+  font-family: "Inter", ui-sans-serif, system-ui;
+}
+
+.stampli-bg {
+  background: linear-gradient(90deg, #06b6d4 0%, #2f6db3 60%, #7c3aed 100%);
+}
+
+.risk-badge-alert {
+  background-color: #fffbeb;
+  border: 1px solid #fcd34d;
+  color: #92400e;
+}
+
+.risk-badge-danger {
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+}
+
+.risk-badge-safe {
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+}
+
+.risk-approve {
+  background-color: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #166534;
+}
+
+.risk-needs_review,
+.risk-unknown {
+  background-color: #fffbeb;
+  border-color: #fcd34d;
+  color: #92400e;
+}
+
+.risk-block {
+  background-color: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+.agent-card {
+  transition: all 0.2s ease;
+}
+
+.agent-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+.pdf-page {
+  box-shadow: 0 0 20px rgb(0 0 0 / 0.2);
+  aspect-ratio: 1 / 1.414;
+}
+
+.step-active {
+  border-left: 3px solid #d61e8c;
+  background: #fff5fb;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-item {
+  animation: fadeIn 0.3s ease forwards;
+}

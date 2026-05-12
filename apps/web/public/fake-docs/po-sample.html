@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Purchase Order (Sample)</title>
+    <style>
+      body { font-family: Inter, Arial, sans-serif; margin: 24px; color: #111827; }
+      h1 { font-size: 20px; margin-bottom: 4px; }
+      .meta { color: #6b7280; font-size: 12px; margin-bottom: 18px; }
+      table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 16px; }
+      th, td { border: 1px solid #e5e7eb; padding: 8px; text-align: left; }
+      th { background: #f9fafb; font-size: 11px; text-transform: uppercase; color: #6b7280; }
+      .warn { background: #fffbeb; color: #92400e; border: 1px solid #fcd34d; padding: 10px; border-radius: 8px; font-size: 12px; }
+    </style>
+  </head>
+  <body>
+    <h1>Purchase Order Document (Sample)</h1>
+    <div class="meta" id="meta">Fake PO document for demo purposes only</div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Line</th>
+          <th>Description</th>
+          <th>PO Unit Price</th>
+          <th>Invoice Unit Price</th>
+          <th>Variance</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+
+    <div class="warn" id="summary"></div>
+
+    <script>
+      const params = new URLSearchParams(window.location.search);
+      const poId = params.get("poId") || "PO-XXXX";
+      const invoiceId = params.get("invoiceId") || "INV-XXXX";
+      const linesRaw = params.get("lines");
+      const lines = linesRaw ? JSON.parse(decodeURIComponent(linesRaw)) : [];
+
+      document.getElementById("meta").textContent = `PO ${poId} aligned for invoice ${invoiceId} (fake demo artifact)`;
+
+      const tbody = document.getElementById("rows");
+      let hasVariance = false;
+      lines.forEach((line, index) => {
+        const variancePct = line.poUnitPrice ? ((line.invoiceUnitPrice - line.poUnitPrice) / line.poUnitPrice) * 100 : 0;
+        if (Math.abs(variancePct) > 0.01) hasVariance = true;
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${index + 1}</td>
+          <td>${line.description}</td>
+          <td>$${Number(line.poUnitPrice).toFixed(2)}</td>
+          <td>$${Number(line.invoiceUnitPrice).toFixed(2)}</td>
+          <td>${variancePct.toFixed(1)}%</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById("summary").textContent = hasVariance
+        ? "Action required: invoice pricing variance detected against this PO."
+        : "No pricing variance detected for this invoice against PO baseline.";
+    </script>
+  </body>
+</html>

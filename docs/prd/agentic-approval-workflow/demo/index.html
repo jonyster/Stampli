@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stampli | Agentic Approval Workflow</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #F3F4F6;
+        }
+
+        .stampli-bg {
+            background: linear-gradient(90deg, #D61E8C 0%, #3B4294 100%);
+        }
+
+        .risk-badge-alert {
+            background-color: #FFFBEB;
+            border: 1px solid #FCD34D;
+            color: #92400E;
+        }
+
+        .risk-badge-danger {
+            background-color: #FEF2F2;
+            border: 1px solid #FECACA;
+            color: #991B1B;
+        }
+
+        .risk-badge-safe {
+            background-color: #F0FDF4;
+            border: 1px solid #BBF7D0;
+            color: #166534;
+        }
+
+        .agent-card {
+            transition: all 0.2s ease;
+        }
+
+        .agent-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .pdf-page {
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+            aspect-ratio: 1 / 1.414;
+        }
+
+        .step-active {
+            border-left: 3px solid #D61E8C;
+            background: #FFF5FB;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-item {
+            animation: fadeIn 0.3s ease forwards;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- Top Navigation -->
+    <header class="stampli-bg h-14 flex items-center justify-between px-4 text-white shrink-0 shadow-lg z-50">
+        <div class="flex items-center space-x-8">
+            <div class="flex items-center space-x-2">
+                <div class="font-black text-xl tracking-tighter italic">STAMPLI</div>
+            </div>
+            <nav class="hidden md:flex space-x-6 text-sm font-medium">
+                <a href="#" class="opacity-100 border-b-2 border-white pb-1">Invoices</a>
+                <a href="#" class="opacity-70 hover:opacity-100">Vendors</a>
+                <a href="#" class="opacity-70 hover:opacity-100">Payments</a>
+                <a href="#" class="opacity-70 hover:opacity-100">Reports</a>
+            </nav>
+        </div>
+        
+        <div class="flex items-center space-x-4">
+            <div class="flex items-center space-x-3 border-l border-white/20 pl-4">
+                <div class="text-right hidden sm:block">
+                    <p class="text-xs font-bold leading-none" id="user-name">Alex Rivera</p>
+                    <p class="text-[10px] opacity-70" id="user-role">Project Manager (Texas West)</p>
+                </div>
+                <div class="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center font-bold text-sm" id="user-initials">AR</div>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex-1 flex overflow-hidden">
+        
+        <!-- Left Sidebar: Flow -->
+        <aside class="w-64 bg-white border-r border-gray-200 flex flex-col shrink-0">
+            <div class="p-4 border-b border-gray-100">
+                <h2 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Approval Workflow</h2>
+            </div>
+            <nav class="flex-1 overflow-y-auto py-2">
+                <div onclick="switchPersona('pm')" id="step-pm" class="step-active cursor-pointer p-4 transition-all hover:bg-gray-50 border-b border-gray-50">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-[10px] font-bold text-pink-600 uppercase">Step 1</span>
+                        <span class="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded italic font-medium">Pending</span>
+                    </div>
+                    <p class="text-sm font-bold text-gray-800">Project Manager</p>
+                    <p class="text-[11px] text-gray-500">Alex Rivera</p>
+                </div>
+
+                <div onclick="switchPersona('dept')" id="step-dept" class="cursor-pointer p-4 transition-all hover:bg-gray-50 border-b border-gray-50 opacity-60">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-[10px] font-bold text-gray-400 uppercase">Step 2</span>
+                        <i class="fas fa-lock text-[10px] text-gray-300"></i>
+                    </div>
+                    <p class="text-sm font-bold text-gray-800">Dept. Head</p>
+                    <p class="text-[11px] text-gray-500">Sarah Jenkins</p>
+                </div>
+
+                <div onclick="switchPersona('finance')" id="step-finance" class="cursor-pointer p-4 transition-all hover:bg-gray-50 border-b border-gray-50 opacity-60">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-[10px] font-bold text-gray-400 uppercase">Final</span>
+                        <i class="fas fa-lock text-[10px] text-gray-300"></i>
+                    </div>
+                    <p class="text-sm font-bold text-gray-800">Finance Review</p>
+                    <p class="text-[11px] text-gray-500">Corporate AP</p>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Center Panel: Agent Insights -->
+        <aside class="flex-1 lg:max-w-[45%] bg-white flex flex-col border-r border-gray-200 overflow-hidden">
+            
+            <!-- Header -->
+            <div class="p-6 border-b border-gray-100 shrink-0">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <div class="flex items-center space-x-2 text-sm text-blue-600 font-semibold mb-1">
+                            <i class="fas fa-building"></i>
+                            <span>ACME CONCRETE & SUPPLY</span>
+                        </div>
+                        <h1 class="text-3xl font-bold text-gray-900">$18,450.00 <span class="text-base font-normal text-gray-500 uppercase ml-1">USD</span></h1>
+                    </div>
+                    
+                    <div class="flex flex-col items-end" id="risk-badge-container">
+                        <!-- Badge injected via JS -->
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-3">
+                    <button class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 rounded shadow-sm font-bold text-sm flex items-center space-x-2">
+                        <i class="fas fa-check"></i>
+                        <span>Approve</span>
+                    </button>
+                    <button class="bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 px-6 py-2.5 rounded font-bold text-sm">
+                        Reject
+                    </button>
+                </div>
+            </div>
+
+            <!-- Content -->
+            <div class="flex-1 overflow-y-auto p-6 space-y-8 bg-gray-50/30">
+                
+                <section>
+                    <h3 class="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center mb-6">
+                        <i class="fas fa-robot mr-2 text-blue-500"></i> Council of Agents Insights
+                    </h3>
+
+                    <!-- ACTIONABLE ANOMALIES (Now at the TOP) -->
+                    <div id="evidence-header">
+                        <h4 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center">
+                            <i class="fas fa-triangle-exclamation mr-2 text-amber-500"></i> Action Required
+                        </h4>
+                    </div>
+                    <div class="grid grid-cols-1 gap-4 mb-10" id="evidence-grid">
+                        <!-- Populated by JS -->
+                    </div>
+
+                    <!-- VERIFICATION CHECKLIST (Now below Action Items) -->
+                    <div class="pt-6 border-t border-gray-100">
+                        <h4 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center">
+                            <i class="fas fa-clipboard-check mr-2 text-green-500"></i> Verifications Passed
+                        </h4>
+                        <div id="verification-checklist" class="space-y-1.5">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </aside>
+
+        <!-- Right Panel: PDF Viewer -->
+        <main class="hidden lg:flex flex-1 flex-col bg-[#525659] relative overflow-hidden">
+            <div class="flex-1 overflow-y-auto flex justify-center p-8">
+                <div class="pdf-page bg-white w-full max-w-xl p-12 flex flex-col relative shadow-2xl">
+                    <div class="flex justify-between items-start mb-8">
+                        <div>
+                            <div class="h-8 w-8 bg-black rounded flex items-center justify-center text-white font-bold text-xs mb-2">A</div>
+                            <h2 class="text-lg font-black">ACME CONCRETE</h2>
+                        </div>
+                        <div class="text-right">
+                            <h1 class="text-2xl font-light text-gray-300">INVOICE</h1>
+                            <p class="text-[10px] mt-2 font-bold">INV-1172-2024</p>
+                        </div>
+                    </div>
+                    <div class="border-t border-b border-gray-200 py-4 my-4">
+                        <table class="w-full text-[10px]">
+                            <thead>
+                                <tr class="text-left text-gray-400 uppercase">
+                                    <th class="pb-2">Description</th>
+                                    <th class="pb-2 text-right">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                <tr>
+                                    <td class="py-2">Ready-Mix Concrete</td>
+                                    <td class="py-2 text-right">$11,250.00</td>
+                                </tr>
+                                <tr class="bg-amber-50">
+                                    <td class="py-2 font-bold text-amber-700">Reinforcement Rods (Anomaly)</td>
+                                    <td class="py-2 text-right font-bold text-amber-700">$7,200.00</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-auto flex justify-end pt-4">
+                        <div class="text-right">
+                            <p class="text-[10px] text-gray-500">Total Amount Due</p>
+                            <p class="text-xl font-black">$18,450.00</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const personas = {
+            pm: {
+                name: "Alex Rivera",
+                role: "Project Manager (Texas West)",
+                initials: "AR",
+                badge: `<div class="risk-badge-alert px-3 py-1.5 rounded-md flex items-center space-x-2 shadow-sm">
+                            <i class="fas fa-shield-virus text-amber-500"></i>
+                            <span class="text-xs font-bold uppercase tracking-wide">Review Variance</span>
+                        </div>`,
+                checklist: [
+                    "Vendor identity verified (ERP Master)",
+                    "Remit-to address matches registered bank file",
+                    "Tax exemption certificate valid & on file",
+                    "PO #8841 exists and is Open"
+                ],
+                anomalies: [
+                    {
+                        agent: "Operational Agent",
+                        title: "Quantity Variance Identified",
+                        text: "I found a <span class='font-bold underline'>quantity discrepancy</span>. Line 2 is 20% over PO #8841. Please verify if the extra reinforcement rods were authorized for the South Wing.",
+                        color: "amber",
+                        icon: "fa-triangle-exclamation"
+                    }
+                ]
+            },
+            dept: {
+                name: "Sarah Jenkins",
+                role: "Dept. Head (Operations)",
+                initials: "SJ",
+                badge: `<div class="risk-badge-danger px-3 py-1.5 rounded-md flex items-center space-x-2 shadow-sm">
+                            <i class="fas fa-exclamation-triangle text-red-500"></i>
+                            <span class="text-xs font-bold uppercase tracking-wide">Budget Overage</span>
+                        </div>`,
+                checklist: [
+                    "Approved by Project Manager (Rivera)",
+                    "Service completion verified via Field Note",
+                    "Vendor performance rating: 4.8/5.0",
+                    "Individual signing limit check ($50k)"
+                ],
+                anomalies: [
+                    {
+                        agent: "Contract Anchor",
+                        title: "MSA Annual Cap Exceeded",
+                        text: "This invoice will push the <strong>ACME Concrete MSA</strong> over its $100k annual cap. This bill results in a <span class='text-red-600 font-bold'>$16,650 overage</span> against Contract #882.",
+                        color: "red",
+                        icon: "fa-circle-exclamation"
+                    }
+                ]
+            },
+            finance: {
+                name: "Corporate AP",
+                role: "Finance & Treasury",
+                initials: "AP",
+                badge: `<div class="risk-badge-safe px-3 py-1.5 rounded-md flex items-center space-x-2 shadow-sm">
+                            <i class="fas fa-check-double text-green-600"></i>
+                            <span class="text-xs font-bold uppercase tracking-wide">Ready to Pay</span>
+                        </div>`,
+                checklist: [
+                    "Duplicate scan complete (No matches)",
+                    "Sanctions list check passed (OFAC)",
+                    "Treasury liquidity confirmed for Net-30",
+                    "Early payment discount agent enabled (2%)",
+                    "All variance approvals collected from PM & Dept Head"
+                ],
+                anomalies: [] 
+            }
+        };
+
+        function switchPersona(id) {
+            const data = personas[id];
+            
+            // Profile
+            document.getElementById('user-name').innerText = data.name;
+            document.getElementById('user-role').innerText = data.role;
+            document.getElementById('user-initials').innerText = data.initials;
+            
+            // Badge
+            document.getElementById('risk-badge-container').innerHTML = data.badge + '<p class="text-[10px] text-gray-400 mt-1 font-medium">Confidence: 93%</p>';
+
+            // Checklist (Successes)
+            const checklistContainer = document.getElementById('verification-checklist');
+            checklistContainer.innerHTML = data.checklist.map((item, index) => `
+                <div class="flex items-center space-x-2 text-[11px] text-gray-600 bg-white border border-gray-100 p-2 rounded animate-item" style="animation-delay: ${index * 50}ms">
+                    <i class="fas fa-check-circle text-green-500"></i>
+                    <span>${item}</span>
+                </div>
+            `).join('');
+
+            // Action Items (Anomalies)
+            const grid = document.getElementById('evidence-grid');
+            const header = document.getElementById('evidence-header');
+            
+            if (data.anomalies.length > 0) {
+                header.classList.remove('hidden');
+                grid.innerHTML = data.anomalies.map(ano => `
+                    <div class="agent-card bg-white border border-gray-200 rounded-lg p-5 border-l-4 border-l-${ano.color}-500 animate-item shadow-sm">
+                        <div class="flex justify-between items-start mb-3">
+                            <span class="text-[10px] font-bold bg-gray-100 text-gray-600 px-2 py-0.5 rounded uppercase tracking-wide">${ano.agent}</span>
+                            <i class="fas ${ano.icon} text-${ano.color}-500 text-lg"></i>
+                        </div>
+                        <h5 class="text-sm font-bold text-gray-900 mb-2">${ano.title}</h5>
+                        <p class="text-xs text-gray-600 leading-relaxed">${ano.text}</p>
+                    </div>
+                `).join('');
+            } else {
+                header.classList.add('hidden');
+                grid.innerHTML = `
+                    <div class="py-10 text-center bg-green-50/50 border border-dashed border-green-200 rounded-lg">
+                        <div class="h-10 w-10 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-check-double text-green-600"></i>
+                        </div>
+                        <p class="text-sm text-green-800 font-bold mb-1">Zero Action Required</p>
+                        <p class="text-[11px] text-green-600">Agents have cleared all operational and policy risks.</p>
+                    </div>
+                `;
+            }
+
+            // Sidebar styling
+            document.querySelectorAll('aside nav div').forEach(el => {
+                el.classList.remove('step-active');
+                el.classList.add('opacity-60');
+            });
+            const activeStep = document.getElementById('step-' + id);
+            activeStep.classList.add('step-active');
+            activeStep.classList.remove('opacity-60');
+        }
+
+        window.onload = () => switchPersona('pm');
+    </script>
+</body>
+</html>

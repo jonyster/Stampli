@@ -1,0 +1,20 @@
+{
+  "name": "agentic-approval-workflow",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --filter @agentic-approval/seed-data build && concurrently \"pnpm --filter @agentic-approval/api dev\" \"pnpm --filter @agentic-approval/web dev\"",
+    "build": "pnpm -r build",
+    "build:web": "pnpm --filter @agentic-approval/web build",
+    "build:api": "pnpm --filter @agentic-approval/api build",
+    "lint": "pnpm -r lint",
+    "test": "pnpm --filter @agentic-approval/api test",
+    "start:api": "node apps/api/dist/index.js"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "typescript": "^5.9.3"
+  },
+  "packageManager": "pnpm@10.18.3"
+}
