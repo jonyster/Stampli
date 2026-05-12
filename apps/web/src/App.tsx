@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { listInvoices } from "./api/client";
+import { API_URL, listInvoices } from "./api/client";
 import { InvoiceWorkspace } from "./pages/InvoiceWorkspace";
 
 const personas = [
@@ -27,7 +27,23 @@ export function App() {
   }
 
   if (invoicesQuery.isError || !invoicesQuery.data?.length) {
-    return <div className="grid min-h-screen place-items-center text-red-600">Could not load invoices. Is the API running?</div>;
+    return (
+      <div className="grid min-h-screen place-items-center bg-gray-100 px-4">
+        <div className="w-full max-w-md rounded-lg border border-red-200 bg-white p-5 shadow-sm">
+          <h2 className="text-base font-bold text-red-700">Could not load invoices</h2>
+          <p className="mt-1 text-sm text-gray-600">Check API connectivity, then retry loading the workspace.</p>
+          <p className="mt-2 rounded bg-gray-50 px-2 py-1 font-mono text-xs text-gray-600">API base URL: {API_URL}</p>
+          <button
+            className="mt-4 rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+            disabled={invoicesQuery.isFetching}
+            onClick={() => void invoicesQuery.refetch()}
+            type="button"
+          >
+            {invoicesQuery.isFetching ? "Retrying..." : "Retry"}
+          </button>
+        </div>
+      </div>
+    );
   }
 
   const persona = personas.find((item) => item.id === selectedPersona) ?? personas[0];

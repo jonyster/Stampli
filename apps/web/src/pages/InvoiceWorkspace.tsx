@@ -194,11 +194,13 @@ export function InvoiceWorkspace({
   const [showApproveFeedback, setShowApproveFeedback] = useState(false);
   const [approveFeedback, setApproveFeedback] = useState("");
   const [approveFeedbackError, setApproveFeedbackError] = useState<string>();
+  const [showVerifications, setShowVerifications] = useState(false);
   const [personaDecisionMap, setPersonaDecisionMap] = useState<Partial<Record<Persona["id"], Decision["decision"]>>>({});
   const [expandedFindingKey, setExpandedFindingKey] = useState<string | null>(null);
   const [selectedDoc, setSelectedDoc] = useState<{ title: string; url: string } | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const autoStartedInvoiceRef = useRef<string | null>(null);
+  const issuesSectionRef = useRef<HTMLElement | null>(null);
 
   const bundleQuery = useQuery({
     queryKey: ["invoice", invoiceId],
@@ -295,6 +297,7 @@ export function InvoiceWorkspace({
     setApproveFeedbackError(undefined);
     setPersonaDecisionMap({});
     setExpandedFindingKey(null);
+    setShowVerifications(false);
     setSelectedDoc(null);
     autoStartedInvoiceRef.current = null;
   }, [invoiceId]);
@@ -322,6 +325,15 @@ export function InvoiceWorkspace({
   const findingsByPersona = buildPersonaFindings(selectedPersona, agentResults);
   const actionItems = findingsByPersona.actionItems;
   const checkItems = findingsByPersona.checkItems;
+  const sortedActionItems = [...actionItems].sort((a, b) => {
+    const aRank = a.tone === "red" ? 0 : 1;
+    const bRank = b.tone === "red" ? 0 : 1;
+    return aRank - bRank;
+  });
+  const topBlockers = sortedActionItems.filter((item) => item.tone === "red").slice(0, 2);
+  const leadBlocker = topBlockers[0] ?? sortedActionItems[0];
+  const leadBlockerIndex = leadBlocker ? sortedActionItems.findIndex((item) => item === leadBlocker) : -1;
+  const leadBlockerFindingKey = leadBlockerIndex >= 0 ? `${selectedPersona}-action-${leadBlockerIndex}-${leadBlocker?.title ?? ""}` : null;
   const actionDrivenRisk = deriveRiskFromActions(actionItems);
   const actionDrivenAuditNote = deriveAuditNote(selectedPersona, actionItems, checkItems, decisionStatusLabel);
   const displayApprovalPackage = approvalPackage
@@ -530,38 +542,73 @@ export function InvoiceWorkspace({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              className={`rounded px-6 py-2 text-sm font-bold text-white shadow-sm disabled:opacity-60 ${
-                effectiveDecision === "approve" ? "bg-green-600" : "bg-blue-600 hover:bg-blue-700"
-              }`}
-              disabled={!approvalPackage || decisionMutation.isPending || hasFinalDecision}
-              onClick={submitApprove}
-              type="button"
-            >
-              {effectiveDecision === "approve" ? "Approved" : "Approve"}
-            </button>
-            <button
-              className={`rounded border px-5 py-2 text-sm font-bold disabled:bg-gray-100 ${
-                effectiveDecision === "decline" ? "border-red-600 bg-red-600 text-white" : "border-gray-300 bg-white text-gray-700"
-              }`}
-              disabled={!approvalPackage || decisionMutation.isPending || hasFinalDecision}
-              onClick={openRejectComposer}
-              type="button"
-            >
-              {effectiveDecision === "decline" ? "Rejected" : "Reject"}
-            </button>
-          </div>
         </div>
 
         <div className="flex-1 space-y-4 overflow-y-auto p-4">
-          <section className="rounded border border-gray-200 bg-white p-3">
-            <h4 className="mb-2 text-[10px] font-bold uppercase tracking-widest text-gray-400">Invoice Details</h4>
-            <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
-              <p><span className="font-semibold text-gray-500">Status:</span> {decisionStatusLabel ?? "Pending approval"}</p>
-              <p><span className="font-semibold text-gray-500">Vendor:</span> {invoice?.vendorName ?? "--"}</p>
-              <p><span className="font-semibold text-gray-500">Invoice #:</span> {invoice?.invoiceNumber ?? "--"}</p>
-              <p><span className="font-semibold text-gray-500">Project:</span> {invoice?.project ?? "--"}</p>
+          <section className="sticky top-0 z-10 rounded-lg border border-sky-200 bg-sky-50/95 p-3 shadow-sm backdrop-blur">
+            <div className="mb-2 flex items-start justify-between gap-3">
+              <div>
+                <h4 className="text-[10px] font-bold uppercase tracking-widest text-sky-700">Decision Summary</h4>
+                <p className="mt-1 text-sm font-semibold text-gray-900">Status: {decisionStatusLabel ?? "Pending decision"}</p>
+              </div>
+              <span
+                className={`rounded px-2 py-1 text-[10px] font-bold uppercase ${
+                  decisionStatusLabel === "Approved"
+                    ? "bg-green-100 text-green-700"
+                    : decisionStatusLabel === "Rejected"
+                      ? "bg-red-100 text-red-700"
+                      : topBlockers.length
+                        ? "bg-red-100 text-red-700"
+                        : "bg-amber-100 text-amber-700"
+                }`}
+              >
+                {decisionStatusLabel ?? (topBlockers.length ? "Blocked" : "Needs review")}
+              </span>
+            </div>
+            <div className="mb-3">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Top blockers</p>
+              {topBlockers.length ? (
+                <ul className="mt-1 space-y-1 text-xs text-gray-700">
+                  {topBlockers.map((item) => (
+                    <li key={`top-blocker-${item.title}`} className="rounded bg-white/80 px-2 py-1">
+                      {item.title}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-1 text-xs text-gray-600">No critical blockers detected for this persona.</p>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                className="rounded bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+                disabled={!approvalPackage || decisionMutation.isPending || hasFinalDecision}
+                onClick={submitApprove}
+                type="button"
+              >
+                Approve now
+              </button>
+              <button
+                className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 disabled:bg-gray-100 disabled:text-gray-400"
+                disabled={!approvalPackage || decisionMutation.isPending || hasFinalDecision}
+                onClick={openRejectComposer}
+                type="button"
+              >
+                Request changes
+              </button>
+              <button
+                className="rounded border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 disabled:border-gray-200 disabled:text-gray-400"
+                disabled={sortedActionItems.length === 0}
+                onClick={() => {
+                  issuesSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  if (leadBlockerFindingKey) {
+                    setExpandedFindingKey(leadBlockerFindingKey);
+                  }
+                }}
+                type="button"
+              >
+                View issues
+              </button>
             </div>
           </section>
 
@@ -666,16 +713,16 @@ export function InvoiceWorkspace({
             <AuditNote approvalPackage={displayApprovalPackage} />
           </div>
 
-          <section>
-            <h4 className="mb-3 text-[10px] font-bold uppercase tracking-widest text-gray-400">Action Required</h4>
+          <section ref={issuesSectionRef}>
+            <h4 className="mb-3 text-[10px] font-bold uppercase tracking-widest text-gray-400">Found Issues</h4>
             <div className="grid gap-4">
-              {actionItems.length === 0 ? (
+              {sortedActionItems.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-green-200 bg-green-50/50 py-8 text-center">
                   <p className="text-sm font-bold text-green-800">Zero Action Required</p>
                   <p className="text-[11px] text-green-600">Checks for this persona are clear.</p>
                 </div>
               ) : (
-                actionItems.map((item, findingIndex) => {
+                sortedActionItems.map((item, findingIndex) => {
                   const findingKey = `${selectedPersona}-action-${findingIndex}-${item.title}`;
                   const isOpen = expandedFindingKey === findingKey;
                   return (
@@ -690,7 +737,13 @@ export function InvoiceWorkspace({
                         <span className="text-[10px] font-semibold text-gray-400">{isOpen ? "Hide evidence" : "Show evidence"}</span>
                       </div>
                       <h5 className="mb-1 text-sm font-bold text-gray-900">{item.title}</h5>
-                      <p className="text-xs leading-relaxed text-gray-600">{item.text}</p>
+                      <p className="text-xs text-gray-600">
+                        <span className="font-semibold text-gray-700">Why:</span> {item.text}
+                      </p>
+                      <p className="mt-1 text-[11px] text-gray-500">
+                        <span className="font-semibold text-gray-600">Evidence sources:</span>{" "}
+                        {item.sourceIds.length ? item.sourceIds.join(", ") : "invoice"}
+                      </p>
                       {isOpen && (
                         <FindingEvidence
                           bundle={bundleQuery.data}
@@ -707,38 +760,53 @@ export function InvoiceWorkspace({
           </section>
 
           <section>
-            <h4 className="mb-3 text-[10px] font-bold uppercase tracking-widest text-gray-400">Verifications Passed</h4>
-            <div className="space-y-2">
-              {checkItems.length === 0 ? (
-                <div className="rounded border border-dashed border-gray-200 bg-white p-3 text-[11px] text-gray-500">
-                  No verification checks are available for this persona on this invoice yet.
-                </div>
-              ) : (
-                checkItems.map((item, findingIndex) => {
-                  const findingKey = `${selectedPersona}-check-${findingIndex}-${item.title}`;
-                  const isOpen = expandedFindingKey === findingKey;
-                  return (
-                    <button
-                      key={findingKey}
-                      className="animate-item w-full rounded border border-gray-100 bg-white p-2 text-left text-[11px] text-gray-600"
-                      onClick={() => setExpandedFindingKey((current) => (current === findingKey ? null : findingKey))}
-                      type="button"
-                    >
-                      {item.title}: {item.text}
-                      <span className="ml-2 text-[10px] font-semibold text-gray-400">{isOpen ? "Hide evidence" : "Show evidence"}</span>
-                      {isOpen && (
-                        <FindingEvidence
-                          bundle={bundleQuery.data}
-                          findingSourceIds={item.sourceIds}
-                          fallbackSourceIds={["invoice"]}
-                          onOpenDocument={setSelectedDoc}
-                        />
-                      )}
-                    </button>
-                  );
-                })
-              )}
+            <div className="mb-3 flex items-center justify-between">
+              <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Verifications Passed</h4>
+              <button
+                className="rounded border border-gray-300 bg-white px-2 py-1 text-[10px] font-semibold text-gray-600 hover:bg-gray-50"
+                onClick={() => setShowVerifications((current) => !current)}
+                type="button"
+              >
+                {showVerifications ? "Hide" : "Show"} ({checkItems.length})
+              </button>
             </div>
+            {!showVerifications ? (
+              <div className="rounded border border-dashed border-gray-200 bg-white p-3 text-[11px] text-gray-500">
+                Collapsed by default to prioritize action-required findings.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {checkItems.length === 0 ? (
+                  <div className="rounded border border-dashed border-gray-200 bg-white p-3 text-[11px] text-gray-500">
+                    No verification checks are available for this persona on this invoice yet.
+                  </div>
+                ) : (
+                  checkItems.map((item, findingIndex) => {
+                    const findingKey = `${selectedPersona}-check-${findingIndex}-${item.title}`;
+                    const isOpen = expandedFindingKey === findingKey;
+                    return (
+                      <button
+                        key={findingKey}
+                        className="animate-item w-full rounded border border-gray-100 bg-white p-2 text-left text-[11px] text-gray-600"
+                        onClick={() => setExpandedFindingKey((current) => (current === findingKey ? null : findingKey))}
+                        type="button"
+                      >
+                        {item.title}: {item.text}
+                        <span className="ml-2 text-[10px] font-semibold text-gray-400">{isOpen ? "Hide evidence" : "Show evidence"}</span>
+                        {isOpen && (
+                          <FindingEvidence
+                            bundle={bundleQuery.data}
+                            findingSourceIds={item.sourceIds}
+                            fallbackSourceIds={["invoice"]}
+                            onOpenDocument={setSelectedDoc}
+                          />
+                        )}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            )}
           </section>
         </div>
       </aside>

@@ -4,12 +4,17 @@ const baseCitations = {
   invoice: { id: "invoice", label: "Invoice record", sourceType: "invoice" as const },
   policy: { id: "policy", label: "Tenant policy", sourceType: "policy" as const },
 };
+const randomScenarioInvoiceIds = new Set(["INV-008", "INV-009", "INV-010"]);
 
 export function isDemoMode() {
   return process.env.DEMO_MODE !== "false";
 }
 
 export function getDemoAgentResult(invoiceId: string, agent: Exclude<AgentName, "critique">): AgentResult {
+  if (randomScenarioInvoiceIds.has(invoiceId)) {
+    return buildRandomAgentResult(agent);
+  }
+
   const table: Record<string, Record<Exclude<AgentName, "critique">, AgentResult>> = {
     "INV-001": {
       dataIntegrity: {
@@ -52,10 +57,10 @@ export function getDemoAgentResult(invoiceId: string, agent: Exclude<AgentName, 
     "INV-002": {
       dataIntegrity: {
         agent,
-        status: "pass",
-        confidence: 0.97,
-        summary: "Extraction confidence is high and remit-to matches vendor history.",
-        findings: [{ title: "Data verified", detail: "OCR confidence 0.97 and remit-to ACH-BOLT-200 matches history.", severity: "info", sourceIds: ["invoice", "VEN-BOLT"] }],
+        status: "warn",
+        confidence: 0.9,
+        summary: "Extraction confidence is acceptable, but duplicate/date proximity needs manual confirmation.",
+        findings: [{ title: "Potential duplicate proximity", detail: "Recent invoice timing for this vendor is close enough to require a quick manual check.", severity: "warning", sourceIds: ["invoice", "VEN-BOLT"] }],
         citations: [baseCitations.invoice, { id: "VEN-BOLT", label: "Bolt vendor master", sourceType: "vendor" }],
         interruptRequired: false,
       },
@@ -106,30 +111,30 @@ export function getDemoAgentResult(invoiceId: string, agent: Exclude<AgentName, 
       },
       operational: {
         agent,
-        status: "pass",
-        confidence: 0.93,
-        summary: "PO and receipt quantities match the invoice.",
-        findings: [{ title: "3-way match passed", detail: "Safety harness quantities and prices match PO-3003 and RCPT-3003.", severity: "info", sourceIds: ["PO-3003", "RCPT-3003"] }],
+        status: "fail",
+        confidence: 0.8,
+        summary: "3-way match failed due to quantity mismatch and missing receipt confidence.",
+        findings: [{ title: "3-way match failure", detail: "Operational check failed and requires AP correction before approval.", severity: "critical", sourceIds: ["PO-3003", "RCPT-3003"] }],
         citations: [{ id: "PO-3003", label: "Purchase order PO-3003", sourceType: "po" }, { id: "RCPT-3003", label: "Receipt RCPT-3003", sourceType: "receipt" }],
-        interruptRequired: false,
+        interruptRequired: true,
       },
       budgetPolicy: {
         agent,
-        status: "pass",
-        confidence: 0.91,
-        summary: "Budget and required dimensions pass.",
-        findings: [{ title: "Budget available", detail: "Safety budget remains available after this invoice.", severity: "info", sourceIds: ["budget-safety"] }],
+        status: "fail",
+        confidence: 0.78,
+        summary: "Policy controls failed due to SoD and budget rule violations.",
+        findings: [{ title: "Policy control failure", detail: "Requester/approver separation and budget threshold checks failed.", severity: "critical", sourceIds: ["budget-safety", "policy"] }],
         citations: [{ id: "budget-safety", label: "Safety budget", sourceType: "budget" }, baseCitations.policy],
-        interruptRequired: false,
+        interruptRequired: true,
       },
       treasury: {
         agent,
-        status: "warn",
-        confidence: 0.86,
-        summary: "Payment must not be scheduled until duplicate and remit-to risks are cleared.",
-        findings: [{ title: "Payment blocked", detail: "Treasury should hold payment because remit-to changed and duplicate risk is unresolved.", severity: "critical", sourceIds: ["VEN-NOVA"] }],
+        status: "fail",
+        confidence: 0.77,
+        summary: "Treasury blocks payment due to unresolved integrity and policy failures.",
+        findings: [{ title: "Treasury block", detail: "Payment is blocked until all critical risks are resolved.", severity: "critical", sourceIds: ["VEN-NOVA", "policy"] }],
         citations: [baseCitations.policy, { id: "VEN-NOVA", label: "Nova vendor master", sourceType: "vendor" }],
-        interruptRequired: false,
+        interruptRequired: true,
       },
     },
     "INV-004": {
@@ -153,21 +158,21 @@ export function getDemoAgentResult(invoiceId: string, agent: Exclude<AgentName, 
       },
       budgetPolicy: {
         agent,
-        status: "pass",
-        confidence: 0.95,
-        summary: "Budget and policy checks pass for South Campus Build.",
-        findings: [{ title: "Budget healthy", detail: "Field Operations budget remains within limits after this invoice.", severity: "info", sourceIds: ["budget"] }],
+        status: "warn",
+        confidence: 0.88,
+        summary: "Budget is still valid but now in caution range.",
+        findings: [{ title: "Budget caution", detail: "Budget remains available but now needs monitoring after this invoice.", severity: "warning", sourceIds: ["budget"] }],
         citations: [{ id: "budget", label: "Field Operations budget", sourceType: "budget" }, baseCitations.policy],
         interruptRequired: false,
       },
       treasury: {
         agent,
-        status: "pass",
-        confidence: 0.9,
-        summary: "Preferred ACH route is available and policy-aligned.",
-        findings: [{ title: "ACH route selected", detail: "No timing constraint or payment hold signal.", severity: "info", sourceIds: ["policy"] }],
+        status: "fail",
+        confidence: 0.79,
+        summary: "Treasury blocks release until budget caution is acknowledged.",
+        findings: [{ title: "Treasury block", detail: "Payment is blocked pending finance acknowledgment of budget caution.", severity: "critical", sourceIds: ["policy", "budget"] }],
         citations: [baseCitations.policy, { id: "VEN-ACME", label: "ACME vendor master", sourceType: "vendor" }],
-        interruptRequired: false,
+        interruptRequired: true,
       },
     },
     "INV-005": {
@@ -200,12 +205,12 @@ export function getDemoAgentResult(invoiceId: string, agent: Exclude<AgentName, 
       },
       treasury: {
         agent,
-        status: "warn",
-        confidence: 0.83,
-        summary: "Payment should wait until variance review is confirmed.",
-        findings: [{ title: "Hold until review", detail: "Treasury recommends payment hold until over-threshold variance is approved.", severity: "warning", sourceIds: ["policy"] }],
+        status: "fail",
+        confidence: 0.78,
+        summary: "Treasury blocks payment until operational variance is resolved.",
+        findings: [{ title: "Payment blocked", detail: "Treasury hard-block due to unresolved operational and budget warnings.", severity: "critical", sourceIds: ["policy"] }],
         citations: [baseCitations.policy, { id: "VEN-BOLT", label: "Bolt vendor master", sourceType: "vendor" }],
-        interruptRequired: false,
+        interruptRequired: true,
       },
     },
     "INV-006": {
@@ -220,21 +225,21 @@ export function getDemoAgentResult(invoiceId: string, agent: Exclude<AgentName, 
       },
       operational: {
         agent,
-        status: "pass",
-        confidence: 0.96,
-        summary: "3-way match passed for PO-6006 and RCPT-6006.",
-        findings: [{ title: "3-way match passed", detail: "PPE and inspection lines match PO and receipt quantities.", severity: "info", sourceIds: ["PO-6006", "RCPT-6006"] }],
+        status: "warn",
+        confidence: 0.88,
+        summary: "Operational check shows minor mismatch needing manager review.",
+        findings: [{ title: "Operational caution", detail: "Minor delivery timing mismatch requires reviewer acknowledgment.", severity: "warning", sourceIds: ["PO-6006", "RCPT-6006"] }],
         citations: [{ id: "PO-6006", label: "Purchase order PO-6006", sourceType: "po" }, { id: "RCPT-6006", label: "Receipt RCPT-6006", sourceType: "receipt" }],
         interruptRequired: false,
       },
       budgetPolicy: {
         agent,
-        status: "pass",
-        confidence: 0.93,
-        summary: "Budget and policy checks pass for Central Logistics Hub.",
-        findings: [{ title: "Budget healthy", detail: "Safety budget has sufficient headroom after this invoice.", severity: "info", sourceIds: ["budget"] }],
+        status: "fail",
+        confidence: 0.8,
+        summary: "Budget policy failed due to threshold breach.",
+        findings: [{ title: "Budget threshold exceeded", detail: "Policy marks this invoice as over threshold and requires escalation.", severity: "critical", sourceIds: ["budget", "policy"] }],
         citations: [{ id: "budget", label: "Safety budget", sourceType: "budget" }, baseCitations.policy],
-        interruptRequired: false,
+        interruptRequired: true,
       },
       treasury: {
         agent,
@@ -249,12 +254,12 @@ export function getDemoAgentResult(invoiceId: string, agent: Exclude<AgentName, 
     "INV-007": {
       dataIntegrity: {
         agent,
-        status: "pass",
-        confidence: 0.96,
-        summary: "Invoice extraction and vendor validation pass.",
-        findings: [{ title: "Data verified", detail: "No duplicate and remit-to is unchanged.", severity: "info", sourceIds: ["invoice", "vendor"] }],
+        status: "fail",
+        confidence: 0.8,
+        summary: "Data integrity failed due to duplicate risk signal.",
+        findings: [{ title: "Duplicate risk detected", detail: "Potential duplicate pattern requires AP confirmation before payment.", severity: "critical", sourceIds: ["invoice", "vendor"] }],
         citations: [baseCitations.invoice, { id: "VEN-ACME", label: "ACME vendor master", sourceType: "vendor" }],
-        interruptRequired: false,
+        interruptRequired: true,
       },
       operational: {
         agent,
@@ -411,6 +416,40 @@ export function getDemoAgentResult(invoiceId: string, agent: Exclude<AgentName, 
   };
 }
 
+function buildRandomAgentResult(agent: Exclude<AgentName, "critique">): AgentResult {
+  const roll = Math.random();
+  const status: AgentResult["status"] = roll < 0.34 ? "pass" : roll < 0.67 ? "warn" : "fail";
+  const confidence = status === "pass" ? 0.95 : status === "warn" ? 0.86 : 0.78;
+  const severity = status === "pass" ? "info" : status === "warn" ? "warning" : "critical";
+  const summaryByStatus = {
+    pass: `${agent} checks are green for this run.`,
+    warn: `${agent} checks are yellow and need reviewer attention.`,
+    fail: `${agent} checks are red and block normal approval flow.`,
+  };
+
+  return {
+    agent,
+    status,
+    confidence,
+    summary: summaryByStatus[status],
+    findings: [
+      {
+        title: `${agent} ${status === "pass" ? "clear" : status === "warn" ? "warning" : "failure"}`,
+        detail:
+          status === "pass"
+            ? "No action required for this agent."
+            : status === "warn"
+              ? "Reviewer should validate this area before final approval."
+              : "Critical issue detected and escalation is required.",
+        severity,
+        sourceIds: ["invoice", "policy"],
+      },
+    ],
+    citations: [baseCitations.invoice, baseCitations.policy],
+    interruptRequired: status === "fail",
+  };
+}
+
 export function getDemoApprovalPackage(invoiceId: string, agentResults: AgentResult[]): ApprovalPackage {
   const hasFail = agentResults.some((result) => result.status === "fail");
   const hasWarn = agentResults.some((result) => result.status === "warn");
@@ -424,7 +463,7 @@ export function getDemoApprovalPackage(invoiceId: string, agentResults: AgentRes
       confidence: hasFail ? 0.91 : hasWarn ? 0.88 : 0.96,
       topDrivers: agentResults.flatMap((result) => result.findings.slice(0, 1).map((finding) => finding.title)).slice(0, 3),
     },
-    auditNote: buildAuditNote(invoiceId),
+    auditNote: randomScenarioInvoiceIds.has(invoiceId) ? buildDynamicAuditNote(agentResults) : buildAuditNote(invoiceId),
     agentResults,
     conflict: isInvoice002
       ? {
@@ -436,6 +475,13 @@ export function getDemoApprovalPackage(invoiceId: string, agentResults: AgentRes
     interruptRequired,
     createdAt: new Date().toISOString(),
   };
+}
+
+function buildDynamicAuditNote(agentResults: AgentResult[]) {
+  const statusLine = (result: AgentResult) =>
+    `${result.agent}: ${result.status === "pass" ? "green" : result.status === "warn" ? "yellow" : result.status === "fail" ? "red" : "unknown"} - ${result.summary}`;
+  const notes = agentResults.map(statusLine).slice(0, 4);
+  return notes.length ? notes : ["No agent notes were generated for this run."];
 }
 
 function buildAuditNote(invoiceId: string) {
