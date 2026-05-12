@@ -114,7 +114,15 @@ export function getDemoAgentResult(invoiceId: string, agent: Exclude<AgentName, 
         status: "fail",
         confidence: 0.8,
         summary: "3-way match failed due to quantity mismatch and missing receipt confidence.",
-        findings: [{ title: "3-way match failure", detail: "Operational check failed and requires AP correction before approval.", severity: "critical", sourceIds: ["PO-3003", "RCPT-3003"] }],
+        findings: [
+          {
+            title: "3-way match failure",
+            detail:
+              "Blocked because PO/receipt support is inconsistent: one line has a quantity mismatch against the invoice and the receiving evidence is missing required confirmation metadata.",
+            severity: "critical",
+            sourceIds: ["PO-3003", "RCPT-3003"],
+          },
+        ],
         citations: [{ id: "PO-3003", label: "Purchase order PO-3003", sourceType: "po" }, { id: "RCPT-3003", label: "Receipt RCPT-3003", sourceType: "receipt" }],
         interruptRequired: true,
       },
@@ -208,7 +216,15 @@ export function getDemoAgentResult(invoiceId: string, agent: Exclude<AgentName, 
         status: "fail",
         confidence: 0.78,
         summary: "Treasury blocks payment until operational variance is resolved.",
-        findings: [{ title: "Payment blocked", detail: "Treasury hard-block due to unresolved operational and budget warnings.", severity: "critical", sourceIds: ["policy"] }],
+        findings: [
+          {
+            title: "Payment blocked",
+            detail:
+              "Blocked because operational review still has unresolved line-level variance and budget policy is in caution/escalation state; release requires both acknowledgments.",
+            severity: "critical",
+            sourceIds: ["policy"],
+          },
+        ],
         citations: [baseCitations.policy, { id: "VEN-BOLT", label: "Bolt vendor master", sourceType: "vendor" }],
         interruptRequired: true,
       },
